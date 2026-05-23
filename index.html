@@ -58,6 +58,30 @@
     ul#habit-list {
       list-style: none;
     }
+
+    .habit-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .habit-item span {
+      font-size: 1rem;
+    }
+
+    .delete-btn {
+      padding: 0.25rem 0.6rem;
+      font-size: 0.85rem;
+      background: #e55;
+      border-radius: 4px;
+    }
+
+    .delete-btn:hover { background: #c33; }
   </style>
 </head>
 <body>
@@ -70,7 +94,48 @@
     <ul id="habit-list"></ul>
   </div>
   <script>
-    // TODO: load and render habits
+    const STORAGE_KEY = 'habits';
+    const form = document.getElementById('add-form');
+    const input = document.getElementById('habit-input');
+    const list = document.getElementById('habit-list');
+
+    const loadHabits = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const saveHabits = habits => localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+
+    const renderHabits = () => {
+      const habits = loadHabits();
+      list.innerHTML = '';
+      habits.forEach(({ id, name }) => {
+        const li = document.createElement('li');
+        li.className = 'habit-item';
+        li.innerHTML = `
+          <span>${name}</span>
+          <button class="delete-btn" data-id="${id}">Delete</button>
+        `;
+        list.appendChild(li);
+      });
+    };
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      const habits = loadHabits();
+      habits.push({ id: Date.now(), name });
+      saveHabits(habits);
+      input.value = '';
+      renderHabits();
+    });
+
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('.delete-btn');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      saveHabits(loadHabits().filter(h => h.id !== id));
+      renderHabits();
+    });
+
+    renderHabits();
   </script>
 </body>
 </html>
