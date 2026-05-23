@@ -27,7 +27,7 @@
     form {
       display: flex;
       gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 0.4rem;
     }
 
     input[type="text"] {
@@ -54,6 +54,13 @@
     }
 
     button:hover { background: #3a58e0; }
+
+    .error-msg {
+      font-size: 0.85rem;
+      color: #dc2626;
+      min-height: 1.4rem;
+      margin-bottom: 0.75rem;
+    }
 
     ul#habit-list {
       list-style: none;
@@ -99,12 +106,16 @@
     .habit-item.done .check-btn:hover { background: #16a34a; border-color: #16a34a; }
     .habit-item:not(.done) .check-btn:hover { border-color: #22c55e; }
 
-    .habit-item span {
+    .habit-name {
       flex: 1;
       font-size: 1rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
     }
 
-    .habit-item.done span {
+    .habit-item.done .habit-name {
       color: #6b7280;
       text-decoration: line-through;
     }
@@ -131,16 +142,30 @@
     }
 
     .delete-btn:hover { background: #c33; }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <h1>Habit Tracker</h1>
     <form id="add-form">
-      <input type="text" id="habit-input" placeholder="Add a habit…" autocomplete="off" />
+      <input type="text" id="habit-input" placeholder="Add a habit…" autocomplete="off" maxlength="100" />
       <button type="submit">Add</button>
     </form>
-    <ul id="habit-list"></ul>
+    <p id="error-msg" class="error-msg" role="alert" aria-live="assertive"></p>
+    <div id="status-msg" class="visually-hidden" role="status" aria-live="polite"></div>
+    <ul id="habit-list" aria-label="Habit list"></ul>
   </div>
   <script>
     const STORAGE_KEY = 'habits';
@@ -148,19 +173,56 @@
     const form = document.getElementById('add-form');
     const input = document.getElementById('habit-input');
     const list = document.getElementById('habit-list');
+    const errorMsg = document.getElementById('error-msg');
+    const statusMsg = document.getElementById('status-msg');
 
-    const today = () => new Date().toISOString().slice(0, 10);
+    const escapeHtml = str => str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    const today = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
 
     const prevDay = dateStr => {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d - 1));
-      return dt.toISOString().slice(0, 10);
+      const dt = new Date(y, m - 1, d - 1);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
     };
 
-    const computeStreak = id => {
-      const completions = loadCompletions();
+    const storageGet = (key, fallback) => {
+      try {
+        const val = localStorage.getItem(key);
+        return val !== null ? JSON.parse(val) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
+    const storageSet = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch {
+        errorMsg.textContent = 'Could not save: storage is full or unavailable.';
+        return false;
+      }
+    };
+
+    const loadHabits = () => storageGet(STORAGE_KEY, []);
+    const saveHabits = habits => storageSet(STORAGE_KEY, habits);
+    const loadCompletions = () => storageGet(COMPLETIONS_KEY, {});
+    const saveCompletions = c => storageSet(COMPLETIONS_KEY, c);
+
+    const computeStreak = (id, completions) => {
       const datesForHabit = new Set(
-        Object.keys(completions).filter(k => k.startsWith(`${id}:`)).map(k => k.slice(k.indexOf(':') + 1))
+        Object.keys(completions)
+          .filter(k => k.startsWith(`${id}:`))
+          .map(k => k.slice(k.indexOf(':') + 1))
       );
       const todayStr = today();
       const yesterdayStr = prevDay(todayStr);
@@ -171,38 +233,28 @@
       return streak;
     };
 
-    const loadHabits = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const saveHabits = habits => localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
-
-    const loadCompletions = () => JSON.parse(localStorage.getItem(COMPLETIONS_KEY) || '{}');
-    const saveCompletions = c => localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(c));
-
-    const toggleCompletion = id => {
-      const c = loadCompletions();
-      const key = `${id}:${today()}`;
-      if (c[key]) delete c[key]; else c[key] = true;
-      saveCompletions(c);
-      renderHabits();
-    };
-
     const renderHabits = () => {
       const habits = loadHabits();
-      const c = loadCompletions();
+      const completions = loadCompletions();
+      const todayStr = today();
       list.innerHTML = '';
       habits.forEach(({ id, name }) => {
-        const done = !!c[`${id}:${today()}`];
+        const done = !!completions[`${id}:${todayStr}`];
+        const streak = computeStreak(id, completions);
+        const safeName = escapeHtml(name);
         const li = document.createElement('li');
         li.className = `habit-item${done ? ' done' : ''}`;
-        const streak = computeStreak(id);
         li.innerHTML = `
-          <button class="check-btn" data-id="${id}" aria-label="${done ? 'Unmark' : 'Mark'} ${name} done">
+          <button class="check-btn" data-id="${id}"
+            aria-label="${done ? 'Unmark' : 'Mark'} ${safeName} as done"
+            aria-pressed="${done}">
             ${done ? '✓' : ''}
           </button>
-          <span>${name}</span>
-          <span class="streak${streak === 0 ? ' zero' : ''}" title="${streak} day streak">
+          <span class="habit-name">${safeName}</span>
+          <span class="streak${streak === 0 ? ' zero' : ''}">
             ${streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—'}
           </span>
-          <button class="delete-btn" data-id="${id}">Delete</button>
+          <button class="delete-btn" data-id="${id}" aria-label="Delete ${safeName}">Delete</button>
         `;
         list.appendChild(li);
       });
@@ -212,24 +264,47 @@
       e.preventDefault();
       const name = input.value.trim();
       if (!name) return;
+      errorMsg.textContent = '';
       const habits = loadHabits();
+      if (habits.some(h => h.name === name)) {
+        errorMsg.textContent = `"${name}" is already in your list.`;
+        return;
+      }
       habits.push({ id: Date.now(), name });
-      saveHabits(habits);
-      input.value = '';
-      renderHabits();
+      if (saveHabits(habits)) {
+        input.value = '';
+        statusMsg.textContent = `Added "${name}".`;
+        renderHabits();
+      }
     });
 
     list.addEventListener('click', e => {
       const checkBtn = e.target.closest('.check-btn');
-      if (checkBtn) { toggleCompletion(Number(checkBtn.dataset.id)); return; }
+      if (checkBtn) {
+        const id = Number(checkBtn.dataset.id);
+        const c = loadCompletions();
+        const key = `${id}:${today()}`;
+        if (c[key]) delete c[key]; else c[key] = true;
+        if (saveCompletions(c)) renderHabits();
+        return;
+      }
 
       const deleteBtn = e.target.closest('.delete-btn');
       if (deleteBtn) {
         const id = Number(deleteBtn.dataset.id);
-        saveHabits(loadHabits().filter(h => h.id !== id));
-        renderHabits();
+        const habits = loadHabits();
+        const habit = habits.find(h => h.id === id);
+        if (saveHabits(habits.filter(h => h.id !== id))) {
+          const c = loadCompletions();
+          Object.keys(c).filter(k => k.startsWith(`${id}:`)).forEach(k => delete c[k]);
+          saveCompletions(c);
+          if (habit) statusMsg.textContent = `Deleted "${habit.name}".`;
+          renderHabits();
+        }
       }
     });
+
+    window.addEventListener('storage', renderHabits);
 
     renderHabits();
   </script>
