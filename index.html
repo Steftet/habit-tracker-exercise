@@ -9,9 +9,10 @@
 
     body {
       font-family: system-ui, sans-serif;
-      background: #f5f5f5;
-      color: #1a1a1a;
-      padding: 2rem 1rem;
+      font-size: 16px;
+      background: #f4f4f5;
+      color: #18181b;
+      padding: 2rem 1.25rem;
     }
 
     #app {
@@ -20,7 +21,9 @@
     }
 
     h1 {
-      font-size: 1.75rem;
+      font-size: clamp(1.4rem, 5vw, 1.75rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
       margin-bottom: 1.5rem;
     }
 
@@ -32,34 +35,51 @@
 
     input[type="text"] {
       flex: 1;
-      padding: 0.5rem 0.75rem;
+      height: 2.75rem;
+      padding: 0 0.875rem;
       font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      border: 1.5px solid #d4d4d8;
+      border-radius: 10px;
+      background: #fff;
+      color: inherit;
+      transition: border-color 0.15s;
     }
 
     input[type="text"]:focus {
-      outline: 2px solid #4f6ef7;
-      outline-offset: 1px;
+      outline: none;
+      border-color: #4f6ef7;
+      box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
     }
 
     button {
-      padding: 0.5rem 1rem;
+      height: 2.75rem;
+      padding: 0 1.25rem;
       font-size: 1rem;
+      font-weight: 600;
       background: #4f6ef7;
       color: #fff;
       border: none;
-      border-radius: 4px;
+      border-radius: 10px;
       cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
     }
 
     button:hover { background: #3a58e0; }
+    button:active { background: #2f4acc; }
 
     .error-msg {
       font-size: 0.85rem;
       color: #dc2626;
       min-height: 1.4rem;
       margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+      border-left: 3px solid transparent;
+    }
+
+    .error-msg:not(:empty) {
+      border-left-color: #dc2626;
+      padding-left: 0.6rem;
     }
 
     ul#habit-list {
@@ -70,11 +90,14 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.6rem 0.75rem;
+      padding: 0.75rem 1rem;
+      min-height: 3rem;
       background: #fff;
-      border: 1px solid #e0e0e0;
-      border-radius: 5px;
+      border: 1.5px solid #e4e4e7;
+      border-radius: 12px;
       margin-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: border-color 0.15s, background 0.15s;
     }
 
     .habit-item.done {
@@ -83,18 +106,19 @@
     }
 
     .habit-item .check-btn {
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 2rem;
+      height: 2rem;
       flex-shrink: 0;
       border-radius: 50%;
-      border: 2px solid #ccc;
+      border: 2px solid #d4d4d8;
       background: #fff;
       cursor: pointer;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      transition: background 0.15s, border-color 0.15s;
     }
 
     .habit-item.done .check-btn {
@@ -116,12 +140,12 @@
     }
 
     .habit-item.done .habit-name {
-      color: #6b7280;
+      color: #a1a1aa;
       text-decoration: line-through;
     }
 
     .streak {
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       font-weight: 600;
       color: #f97316;
       white-space: nowrap;
@@ -130,18 +154,24 @@
     }
 
     .streak.zero {
-      color: #9ca3af;
+      color: #a1a1aa;
       font-weight: 400;
     }
 
     .delete-btn {
-      padding: 0.25rem 0.6rem;
-      font-size: 0.85rem;
-      background: #e55;
-      border-radius: 4px;
+      height: 2rem;
+      padding: 0 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1.5px solid #fecaca;
+      border-radius: 8px;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .delete-btn:hover { background: #c33; }
+    .delete-btn:hover { background: #fee2e2; border-color: #fca5a5; }
+    .delete-btn:active { background: #fecaca; }
 
     .visually-hidden {
       position: absolute;
