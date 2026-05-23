@@ -46,8 +46,8 @@
     }
 
     input[type="text"]:focus {
-      outline: none;
-      border-color: #4f6ef7;
+      outline: 2px solid #4f6ef7;
+      outline-offset: 1px;
       box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
     }
 
@@ -128,7 +128,7 @@
     }
 
     .habit-item.done .check-btn:hover { background: #16a34a; border-color: #16a34a; }
-    .habit-item:not(.done) .check-btn:hover { border-color: #22c55e; }
+    .habit-item:not(.done) .check-btn:hover { background: #fff; border-color: #22c55e; }
 
     .habit-name {
       flex: 1;
@@ -140,21 +140,21 @@
     }
 
     .habit-item.done .habit-name {
-      color: #a1a1aa;
+      color: #6b7280;
       text-decoration: line-through;
     }
 
     .streak {
       font-size: 0.75rem;
       font-weight: 600;
-      color: #f97316;
+      color: #c2410c;
       white-space: nowrap;
       min-width: 3rem;
       text-align: right;
     }
 
     .streak.zero {
-      color: #a1a1aa;
+      color: #6b7280;
       font-weight: 400;
     }
 
@@ -164,7 +164,7 @@
       font-size: 0.8rem;
       font-weight: 600;
       background: #fef2f2;
-      color: #dc2626;
+      color: #b91c1c;
       border: 1.5px solid #fecaca;
       border-radius: 8px;
       transition: background 0.15s, border-color 0.15s;
@@ -238,7 +238,6 @@
         localStorage.setItem(key, JSON.stringify(value));
         return true;
       } catch {
-        errorMsg.textContent = 'Could not save: storage is full or unavailable.';
         return false;
       }
     };
@@ -247,6 +246,19 @@
     const saveHabits = habits => storageSet(STORAGE_KEY, habits);
     const loadCompletions = () => storageGet(COMPLETIONS_KEY, {});
     const saveCompletions = c => storageSet(COMPLETIONS_KEY, c);
+
+    const showStorageError = () => {
+      errorMsg.textContent = 'Could not save: storage is full or unavailable.';
+    };
+
+    let announceTimer;
+    const announce = msg => {
+      statusMsg.textContent = '';
+      clearTimeout(announceTimer);
+      announceTimer = setTimeout(() => {
+        statusMsg.textContent = msg;
+      }, 50);
+    };
 
     const computeStreak = (id, completions) => {
       const datesForHabit = new Set(
@@ -300,11 +312,13 @@
         errorMsg.textContent = `"${name}" is already in your list.`;
         return;
       }
-      habits.push({ id: Date.now(), name });
+      habits.push({ id: Date.now() + Math.floor(Math.random() * 1000), name });
       if (saveHabits(habits)) {
         input.value = '';
-        statusMsg.textContent = `Added "${name}".`;
+        announce(`Added "${name}".`);
         renderHabits();
+      } else {
+        showStorageError();
       }
     });
 
@@ -315,7 +329,7 @@
         const c = loadCompletions();
         const key = `${id}:${today()}`;
         if (c[key]) delete c[key]; else c[key] = true;
-        if (saveCompletions(c)) renderHabits();
+        if (saveCompletions(c)) renderHabits(); else showStorageError();
         return;
       }
 
@@ -324,12 +338,21 @@
         const id = Number(deleteBtn.dataset.id);
         const habits = loadHabits();
         const habit = habits.find(h => h.id === id);
+        const items = Array.from(list.querySelectorAll('.habit-item'));
+        const idx = items.findIndex(item => Number(item.querySelector('.delete-btn').dataset.id) === id);
         if (saveHabits(habits.filter(h => h.id !== id))) {
           const c = loadCompletions();
           Object.keys(c).filter(k => k.startsWith(`${id}:`)).forEach(k => delete c[k]);
           saveCompletions(c);
-          if (habit) statusMsg.textContent = `Deleted "${habit.name}".`;
+          if (habit) announce(`Deleted "${habit.name}".`);
           renderHabits();
+          const newItems = list.querySelectorAll('.habit-item');
+          const focusTarget = newItems[idx]?.querySelector('.check-btn') ??
+                              newItems[idx - 1]?.querySelector('.check-btn') ??
+                              input;
+          focusTarget.focus();
+        } else {
+          showStorageError();
         }
       }
     });
